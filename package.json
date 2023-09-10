@@ -1,0 +1,26 @@
+{
+  "name": "socket-server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/atpngo/socket-server.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/atpngo/socket-server/issues"
+  },
+  "homepage": "https://github.com/atpngo/socket-server#readme",
+  "dependencies": {
+    "axios": "^1.5.0",
+    "mongoose": "^7.5.0",
+    "socket.io": "^4.7.2"
+  },
+  "type": "module"
+}
