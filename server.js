@@ -50,7 +50,37 @@ io.on("connection", (socket) => {
 
     socket.on("disconnecting", (reason) => {
         console.log("Socket left: " + socket.id )
-        socket.leave(socket_dict[socket.id].room) // leave room
+        const roomID = socket_dict[socket.id].room
+        socket.leave(roomID) // leave room
+        // notify other player?
+        let other = null;
+        for (const player of room_dict[roomID]["players"])
+        {
+            if (player !== socket.id)
+            {
+                other = player;
+            }
+        }
+        socket.to(other).emit("opponentLeft")
+        room_dict[roomID]["players"].delete(socket.id) // leave room_dict.players
+        room_dict[roomID]["ready"].delete(socket.id) // leave room_dict.ready
+    })
+
+    socket.on("leaveRoom", (roomID) => {
+        console.log("Socket " + socket.id + " room "+ roomID)
+        socket.leave(roomID) // leave room
+        // notify other player?
+        let other = null;
+        for (const player of room_dict[roomID]["players"])
+        {
+            if (player !== socket.id)
+            {
+                other = player;
+            }
+        }
+        socket.to(other).emit("opponentLeft")
+        room_dict[roomID]["players"].delete(socket.id) // leave room_dict.players
+        room_dict[roomID]["ready"].delete(socket.id) // leave room_dict.ready
     })
 
     socket.on("checkRoom", (roomID) => {
@@ -171,7 +201,6 @@ io.on("connection", (socket) => {
         for (const room of rooms)
         {
             const clients = io.sockets.adapter.rooms.get(room)
-            console.log(typeof clients)
             if (clients && clients.has(socket.id))
             {
                 console.log("socket " + socket.id + " is in room " + room + ". Leaving this room...")
@@ -179,6 +208,7 @@ io.on("connection", (socket) => {
             }
             if (clients && clients.length == 0)
             {
+                console.log("found an existing room!")
                 freeRoom = room;
                 break
             }
