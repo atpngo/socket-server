@@ -44,11 +44,11 @@ function shuffleArray(array) {
 }
 
 io.on("connection", (socket) => {
-    if (DEBUG) console.log("A socket connected " + socket.id)
+    console.log("A socket connected " + socket.id)
     socket_dict[socket.id] = new Object()
 
     socket.on("disconnecting", (reason) => {
-        if (DEBUG) console.log("Socket left: " + socket.id )
+        console.log("Socket left: " + socket.id )
         const roomID = socket_dict[socket.id].room
         if (roomID !== undefined)
         {
@@ -240,5 +240,5 @@ io.on("connection", (socket) => {
     })
 });
 
-if (DEBUG) console.log("Starting server on port 4000")
+console.log("Starting server on port 4000")
 httpServer.listen(4000, process.env.SERVER_ADDRESS);
