@@ -12,8 +12,8 @@ let DEBUG = true;
 const io = new Server(httpServer, {
   // ...
   cors: {
-    // origin: "http://localhost:3000"
-    origin: "*"
+    origin: "http://localhost:3000"
+    // origin: "*"
   }
 });
 
