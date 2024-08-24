@@ -241,5 +241,5 @@ io.on("connection", (socket) => {
     })
 });
 
-console.log("Starting server on port 4000")
-httpServer.listen(4000);
+console.log("Starting server on port: " + (process.env.PORT || 4000))
+httpServer.listen(process.env.PORT || 4000);
