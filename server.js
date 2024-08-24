@@ -7,11 +7,12 @@ dotenv.config()
 
 const httpServer = createServer()
 
-let DEBUG = false;
+let DEBUG = true;
 // const mongoose = require('mongoose')
 const io = new Server(httpServer, {
   // ...
   cors: {
+    // origin: "http://localhost:3000"
     origin: "*"
   }
 });
@@ -241,4 +242,4 @@ io.on("connection", (socket) => {
 });
 
 console.log("Starting server on port 4000")
-httpServer.listen(4000, process.env.SERVER_ADDRESS);
+httpServer.listen(4000);
