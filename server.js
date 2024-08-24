@@ -6,16 +6,15 @@ import dotenv from 'dotenv';
 dotenv.config()
 
 const httpServer = createServer()
-// require('dotenv').config();
+
+let DEBUG = false;
 // const mongoose = require('mongoose')
 const io = new Server(httpServer, {
   // ...
   cors: {
-    origin: "http://localhost:3000"
+    origin: process.env.CLIENT_URL
   }
 });
-
-const connectMongo = async () => mongoose.connect(process.env.DB_URL)
 
 // Set to keep track of all the rooms
 let rooms = new Set()
@@ -45,29 +44,33 @@ function shuffleArray(array) {
 }
 
 io.on("connection", (socket) => {
-    console.log("A socket connected " + socket.id)
+    if (DEBUG) console.log("A socket connected " + socket.id)
     socket_dict[socket.id] = new Object()
 
     socket.on("disconnecting", (reason) => {
-        console.log("Socket left: " + socket.id )
+        if (DEBUG) console.log("Socket left: " + socket.id )
         const roomID = socket_dict[socket.id].room
-        socket.leave(roomID) // leave room
-        // notify other player?
-        let other = null;
-        for (const player of room_dict[roomID]["players"])
+        if (roomID !== undefined)
         {
-            if (player !== socket.id)
+            socket.leave(roomID) // leave room
+            if (DEBUG) console.log("Socket " + socket.id + " leaving room " + roomID);
+            // notify other player?
+            let other = null;
+            for (const player of room_dict[roomID]["players"])
             {
-                other = player;
+                if (player !== socket.id)
+                {
+                    other = player;
+                }
             }
+            socket.to(other).emit("opponentLeft")
+            room_dict[roomID]["players"].delete(socket.id) // leave room_dict.players
+            room_dict[roomID]["ready"].delete(socket.id) // leave room_dict.ready
         }
-        socket.to(other).emit("opponentLeft")
-        room_dict[roomID]["players"].delete(socket.id) // leave room_dict.players
-        room_dict[roomID]["ready"].delete(socket.id) // leave room_dict.ready
     })
 
     socket.on("leaveRoom", (roomID) => {
-        console.log("Socket " + socket.id + " room "+ roomID)
+        if (DEBUG) console.log("Socket " + socket.id + " room "+ roomID)
         socket.leave(roomID) // leave room
         // notify other player?
         let other = null;
@@ -84,7 +87,7 @@ io.on("connection", (socket) => {
     })
 
     socket.on("checkRoom", (roomID) => {
-        console.log("Checking if " + roomID + " is a valid room: " + rooms.has(roomID))
+        if (DEBUG) console.log("Checking if " + roomID + " is a valid room: " + rooms.has(roomID))
         socket.emit("checkRoomResult", rooms.has(roomID))
     })
 
@@ -109,7 +112,7 @@ io.on("connection", (socket) => {
     })
 
     socket.on("playerReady", async (roomID) => {
-        console.log("Socket " + socket.id + " is ready to play in " + roomID);
+        if (DEBUG) console.log("Socket " + socket.id + " is ready to play in " + roomID);
         // return two things: YOUR STATUS, OPPONENT STATUS
         // send message to self that server acknowledges you are ready
         room_dict[roomID]["ready"].add(socket.id)
@@ -124,7 +127,7 @@ io.on("connection", (socket) => {
             if (player != socket.id)
             {
                 otherSocket = player
-                console.log("Found other socket: " + player)
+                if (DEBUG) console.log("Found other socket: " + player)
             }
         }
         if (otherSocket !== null)
@@ -134,17 +137,17 @@ io.on("connection", (socket) => {
             {
                 // both players ready
                 // fetch words and notify
-                axios.post('http://localhost:3000/api/words', {'length': 6}).then(
+                axios.post(process.env.API_URL + '/api/words', {'length': 6}).then(
                     res => {
                         let words = res.data.words;
                         const randomNum = Math.floor(Math.random()*words.length);
                         const word = words[randomNum];
                         const shuffled = shuffleArray(Array.from(word));
-                        console.log("Anagram: " + shuffled)
-                        axios.post('http://localhost:3000/api/anagrams/letters', {"letters": word}).then(
+                        if (DEBUG) console.log("Anagram: " + shuffled)
+                        axios.post(process.env.API_URL + '/api/anagrams/letters', {"letters": word}).then(
                             res_2 => {
-                                console.log("Word data:")
-                                console.log(res_2.data.words)
+                                if (DEBUG) console.log("Word data:")
+                                if (DEBUG) console.log(res_2.data.words)
                                 // socket emit data
                                 io.to(roomID).emit("dataReady", [shuffled, res_2.data.words])
                             }
@@ -157,19 +160,19 @@ io.on("connection", (socket) => {
     })
 
     socket.on("requestToJoin", (roomID) => {
-        console.log("Socket " + socket.id + " requesting to join " + roomID + ".")
+        if (DEBUG) console.log("Socket " + socket.id + " requesting to join " + roomID + ".")
         if ((rooms.has(roomID) && io.sockets.adapter.rooms.get(roomID) && io.sockets.adapter.rooms.get(roomID).size < 2) || (socket_dict[socket.id]["room"] == roomID))
         {
             if (socket_dict[socket.id]["room"] != roomID)
             {
                 socket.join(roomID)
                 socket_dict[socket.id]["room"] = roomID
-                console.log("Assigned " + socket.id + " to room " + roomID)
+                if (DEBUG) console.log("Assigned " + socket.id + " to room " + roomID)
                 room_dict[roomID]["players"].add(socket.id)
             }
             else
             {
-                console.log("Socket " + socket.id + " already in room " + roomID)
+                if (DEBUG) console.log("Socket " + socket.id + " already in room " + roomID)
             }
             
             socket.emit("responseRequestToJoin", true)
@@ -183,11 +186,11 @@ io.on("connection", (socket) => {
         {
             if (rooms.has(roomID) && io.sockets.adapter.rooms.get(roomID) && io.sockets.adapter.rooms.get(roomID).size == 2)
             {
-                console.log("Room " + roomID + " is already full!")
+                if (DEBUG) console.log("Room " + roomID + " is already full!")
             }
             else
             {
-                console.log("Room " + roomID + " doesn't exist!")
+                if (DEBUG) console.log("Room " + roomID + " doesn't exist!")
             }
             socket.emit("responseRequestToJoin", false)
         }
@@ -195,7 +198,7 @@ io.on("connection", (socket) => {
 
     socket.on("requestRoom", () => {
         // search current rooms to see if there's anyone in it
-        console.log("Socket " + socket.id + " is requesting a room...")
+        if (DEBUG) console.log("Socket " + socket.id + " is requesting a room...")
         let freeRoom = null
         // leave existing rooms
         for (const room of rooms)
@@ -203,12 +206,12 @@ io.on("connection", (socket) => {
             const clients = io.sockets.adapter.rooms.get(room)
             if (clients && clients.has(socket.id))
             {
-                console.log("socket " + socket.id + " is in room " + room + ". Leaving this room...")
+                if (DEBUG) console.log("socket " + socket.id + " is in room " + room + ". Leaving this room...")
                 socket.leave(room)
             }
             if (clients && clients.length == 0)
             {
-                console.log("found an existing room!")
+                if (DEBUG) console.log("found an existing room!")
                 freeRoom = room;
                 break
             }
@@ -230,12 +233,12 @@ io.on("connection", (socket) => {
         socket_dict[socket.id]["room"] = freeRoom
         room_dict[freeRoom]["players"].add(socket.id)
 
-        console.log("Found a room: " + freeRoom)
-        console.log("Assigned " + socket.id + " to room " + freeRoom)
+        if (DEBUG) console.log("Found a room: " + freeRoom)
+        if (DEBUG) console.log("Assigned " + socket.id + " to room " + freeRoom)
 
         socket.emit('requestRoomResponse', freeRoom)
     })
 });
 
-
+if (DEBUG) console.log("Starting server on port 4000")
 httpServer.listen(4000);
