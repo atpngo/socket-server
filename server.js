@@ -241,4 +241,4 @@ io.on("connection", (socket) => {
 });
 
 if (DEBUG) console.log("Starting server on port 4000")
-httpServer.listen(4000);
+httpServer.listen(4000, process.env.SERVER_ADDRESS);
