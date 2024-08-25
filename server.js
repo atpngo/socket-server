@@ -72,6 +72,53 @@ io.on("connection", (socket) => {
         }
     })
 
+    socket.on("letsPlayAgain", (roomID) => {
+        // READY UP
+        room_dict[roomID]["ready"].add(socket.id)
+        // Broadcast to the other socket you want to play again
+        let other = null;
+        for (const player of room_dict[roomID]["players"])
+        {
+            if (player !== socket.id)
+            {
+                other = player;
+            }
+        }
+        if (room_dict[roomID]["ready"].size === 2) {
+            // other player is already ready
+            // Reset the rooms, LETS PLAY!!!
+            console.log('Both opponents are ready to play again')
+            // (1) Emit to all sockets in the room to reset their state
+            io.to(roomID).emit("resetAndGetReady")
+            // (2) Fetch new game data
+            axios.post(process.env.API_URL + '/api/words', {'length': 6}).then(
+                res => {
+                    let words = res.data.words;
+                    const randomNum = Math.floor(Math.random()*words.length);
+                    const word = words[randomNum];
+                    const shuffled = shuffleArray(Array.from(word));
+                    if (DEBUG) console.log("Anagram: " + shuffled)
+                    axios.post(process.env.API_URL + '/api/anagrams/letters', {"letters": word}).then(
+                        res_2 => {
+                            if (DEBUG) console.log("Word data:")
+                            if (DEBUG) console.log(res_2.data.words)
+                            // socket emit data
+                            io.to(roomID).emit("dataReady", [shuffled, res_2.data.words])
+                            // reset ready room
+                            room_dict[roomID]["ready"] = new Set();
+                        }
+                    )
+                    
+                }
+            )
+            // (3) Sent new game data to sockets :)
+
+        } else {
+            socket.to(other).emit("opponentWantsToPlayAgain")
+            // make it so that a lil symbol appearas on their screen
+        }
+    });
+
     socket.on("leaveRoom", (roomID) => {
         if (DEBUG) console.log("Socket " + socket.id + " room "+ roomID)
         socket.leave(roomID) // leave room
@@ -153,6 +200,8 @@ io.on("connection", (socket) => {
                                 if (DEBUG) console.log(res_2.data.words)
                                 // socket emit data
                                 io.to(roomID).emit("dataReady", [shuffled, res_2.data.words])
+                                // reset ready room
+                                room_dict[roomID]["ready"] = new Set();
                             }
                         )
                         
@@ -242,6 +291,8 @@ io.on("connection", (socket) => {
         socket.emit('requestRoomResponse', freeRoom)
     })
 });
+
+
 
 console.log("Starting server on port: " + (process.env.PORT || 4000))
 httpServer.listen(process.env.PORT || 4000);
