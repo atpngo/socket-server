@@ -13,11 +13,11 @@ const io = new Server(httpServer, {
   // ...
   cors: {
     // origin: "http://localhost:3000"
-    origin: process.env.CLIENT_URL
+    // origin: process.env.CLIENT_URL
     // origin: "http://localhost:3000"
-    // origin: "*"
+    origin: ["http://192.168.2.2:3000", "http://raspberrypi.local:3000", "https://andvygrams.andytpngo.org"]
   }
-});
+}); 
 
 // Set to keep track of all the rooms
 let rooms = new Set()
