@@ -3,6 +3,8 @@ from aiohttp import web
 import random
 import string
 import requests
+import time
+import asyncio
 
 
 # Exceptions
@@ -70,6 +72,8 @@ class Player:
     def __init__(self, id):
         self.id = id
         self.roomID = None
+        self.latency = 0
+        self.ping_start = None
         self.reset()
 
     def reset(self):
@@ -106,6 +110,18 @@ class Player:
 
     def set_words(self, words):
         self.words_found = set(words)
+
+    def get_latency(self):
+        return self.latency
+
+    def set_latency(self, latency):
+        self.latency = latency
+
+    def get_ping_start(self):
+        return self.ping_start
+
+    def set_ping_start(self, ping_start):
+        self.ping_start = ping_start
 
 
 class Room:
@@ -211,6 +227,8 @@ class RoomHandler:
     async def remove_player_from_room(self, player: str, roomID):
         self.get_room(roomID).remove_player(player)
         await self.sio.leave_room(player, roomID)
+        if len(self.get_players(roomID)) == 0:
+            self.delete_room(roomID)
 
     def room_is_full(self, roomID):
         return self.get_room(roomID).is_full()
@@ -221,7 +239,8 @@ class RoomHandler:
     def get_players(self, roomID):
         return self.get_room(roomID).get_players()
 
-    # TODO: delete rooms when no players inside
+    def delete_room(self, roomID):
+        self.rooms.pop(roomID)
 
 
 class SocketServer:
@@ -241,6 +260,7 @@ class SocketServer:
         self.sio.on("leaveRoom", self.leave_room)
         self.sio.on("scoreUpdate", self.handle_score_update)
         self.sio.on("letsPlayAgain", self.handle_play_again)
+        self.sio.on("pingServer", self.handle_ping)
 
         # Data structures to handle connections
         self.room_handler = RoomHandler(self.sio)
@@ -340,6 +360,12 @@ class SocketServer:
             return
         await self.sio.emit("resetAndGetReady", room=roomID)
         await self.start_game_in_room(roomID)
+
+    # Latency check
+    async def handle_ping(self, sid, timestamp):
+        if not self.player_handler.player_exists(sid):
+            return
+        await self.sio.emit("pingFromServer", timestamp, to=sid)
 
     def all_players_ready(self, roomID):
         ready_count = [
